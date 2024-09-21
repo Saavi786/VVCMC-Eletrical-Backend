@@ -1,5 +1,6 @@
 const express = require("express");
 // const serverless = require("serverless-http")
+const path = require('path');
 const cors = require("cors");
 const bodyParser = require('body-parser');
 require("./config/DBConn");
@@ -30,6 +31,8 @@ app.use('/admin', adminRoutes);
 app.use('/api', imageRoutes);
 app.use('/map', MapOfficeStaticRoute);
 app.use('/map', MapOfficeResponseRoute);
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 //transformerdata

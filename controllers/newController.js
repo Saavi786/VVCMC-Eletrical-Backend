@@ -1,4 +1,5 @@
 const ResNewData = require('../Model/newschema');
+const upload = require('../config/multerConfig');
 const moment = require('moment-timezone');
 const { v4: uuidv4 } = require('uuid');
 
@@ -17,61 +18,65 @@ const generateUniqueApplicationID = async () => {
 };
 
 // Add new data
-exports.addData = async (req, res) => {
-    try {
-        const {
-            WardCommittee,
-            ConsumerID,
-            NewMeterNumber,
-            Purpose,
-            Type,
-            Address,
-            MeterImageData,
-            MeterLatitude,
-            MeterLongitude,
-            SanctionLoad,
-            TimerPanel,
-            TimerPanelImage,
-        } = req.body;
+exports.addData = [
+    upload.fields([
+        { name: 'MeterImage', maxCount: 1 }, // Allow only one meter image
+        { name: 'TimerPanelImage', maxCount: 1 } // Allow only one timer panel image
+    ]),
+    async (req, res) => {
+        try {
+            const {
+                WardCommittee,
+                ConsumerID,
+                NewMeterNumber,
+                Purpose,
+                Type,
+                Address,
+                MeterLatitude,
+                MeterLongitude,
+                SanctionLoad,
+                TimerPanel,
+            } = req.body;
 
-        // Check if the ConsumerID already exists
-        const existingData = await ResNewData.findOne({ ConsumerID });
-        if (existingData) {
-            return res.status(400).json({ message: "Consumer ID already exists" });
+            // Check if the ConsumerID already exists
+            const existingData = await ResNewData.findOne({ ConsumerID });
+            if (existingData) {
+                return res.status(400).json({ message: "Consumer ID already exists" });
+            }
+
+            // Generate unique ApplicationID
+            const applicationID = await generateUniqueApplicationID();
+
+            // Create a new instance of the ResNewData model
+            const newData = new ResNewData({
+                ApplicationID: applicationID,
+                WardCommittee,
+                ConsumerID,
+                NewMeterNumber,
+                Purpose,
+                Type,
+                Address,
+                MeterImageData: req.files['MeterImage'] ? req.files['MeterImage'][0].filename : null, // Single image path
+                MeterLatitude,
+                MeterLongitude,
+                SanctionLoad,
+                TimerPanel,
+                TimerPanelImage: req.files['TimerPanelImage'] ? req.files['TimerPanelImage'][0].filename : null, // Single image path
+                Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+                Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
+            });
+
+            // Save the new data to the database
+            const savedData = await newData.save();
+
+            // Send a success response
+            res.status(201).json({ message: "Data saved successfully", data: savedData });
+        } catch (error) {
+            console.error("Error adding data:", error);
+            res.status(500).json({ message: "Encountered an unexpected condition." });
         }
-
-        // Generate unique ApplicationID
-        const applicationID = await generateUniqueApplicationID();
-
-        // Create a new instance of the ResNewData model
-        const newData = new ResNewData({
-            ApplicationID: applicationID,
-            WardCommittee,
-            ConsumerID,
-            NewMeterNumber,
-            Purpose,
-            Type,
-            Address,
-            MeterImageData,
-            MeterLatitude,
-            MeterLongitude,
-            SanctionLoad,
-            TimerPanel,
-            TimerPanelImage,
-            Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
-            Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
-        });
-
-        // Save the new data to the database
-        const savedData = await newData.save();
-
-        // Send a success response
-        res.status(201).json({ message: "Data saved successfully", data: savedData });
-    } catch (error) {
-        console.error("Error adding data:", error);
-        res.status(500).json({ message: "Encountered an unexpected condition." });
     }
-};
+];
 
 // Get all data
 exports.getData = async (req, res) => {
@@ -100,64 +105,66 @@ exports.deleteData = async (req, res) => {
 };
 
 // Add new response to the Response array
-exports.addResponse = async (req, res) => {
-    try {
-        const { ConsumerID } = req.params;
-        const {
-            WardCommittee,
-            PoleName,
-            HightofPole,
-            TypeofBracket,
-            Bracket,
-            NumberLight,
-            LightName,
-            Watts,
-            PoleImageData,
-            PoleLatitude,
-            PoleLongitude,
-            TypesofCable // New field for Types of Cable
-        } = req.body;
-
-        // Construct new response data with TypesofCable
-        const newResponseData = {
-            WardCommittee,
-            ConsumerID,
-            TypeofPole: {
+exports.addResponse = [
+    upload.single('PoleImage'), // For a single image upload for PoleImageData
+    async (req, res) => {
+        try {
+            const { ConsumerID } = req.params;
+            const {
+                WardCommittee,
                 PoleName,
                 HightofPole,
                 TypeofBracket,
                 Bracket,
-            },
-            TypeofLight: {
+                NumberLight,
                 LightName,
                 Watts,
-            },
-            NumberLight,
-            PoleImageData,
-            PoleLatitude,
-            PoleLongitude,
-            TypesofCable, // This assumes that TypesofCable is an array with the proper structure
-            Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
-            Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
-        };
+                PoleLatitude,
+                PoleLongitude,
+                TypesofCable // Assuming this is an array
+            } = req.body;
 
-        // Find the document by ConsumerID and add new response data to the Response array
-        const updatedData = await ResNewData.findOneAndUpdate(
-            { ConsumerID },
-            { $push: { Response: newResponseData } },
-            { new: true }
-        );
+            // Construct new response data
+            const newResponseData = {
+                WardCommittee,
+                ConsumerID,
+                TypeofPole: {
+                    PoleName,
+                    HightofPole,
+                    TypeofBracket,
+                    Bracket,
+                },
+                TypeofLight: {
+                    LightName,
+                    Watts,
+                },
+                NumberLight,
+                PoleImageData: req.file ? req.file.filename : null, // Handle single image upload
+                PoleLatitude,
+                PoleLongitude,
+                TypesofCable, // This assumes that TypesofCable is an array with the proper structure
+                Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
+                Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
+            };
 
-        if (!updatedData) {
-            return res.status(404).json({ message: "Consumer ID not found" });
+            // Find the document by ConsumerID and add new response data to the Response array
+            const updatedData = await ResNewData.findOneAndUpdate(
+                { ConsumerID },
+                { $push: { Response: newResponseData } },
+                { new: true }
+            );
+
+            if (!updatedData) {
+                return res.status(404).json({ message: "Consumer ID not found" });
+            }
+
+            res.status(200).json({ message: "Response data added successfully", data: updatedData });
+        } catch (error) {
+            console.error("Error adding response data:", error);
+            res.status(500).json({ message: "Internal server error" });
         }
-
-        res.status(200).json({ message: "Response data added successfully", data: updatedData });
-    } catch (error) {
-        console.error("Error adding response data:", error);
-        res.status(500).json({ message: "Internal server error" });
     }
-};
+];
 
 // Delete a response from the Response array
 exports.deleteResponse = async (req, res) => {
