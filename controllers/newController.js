@@ -1,5 +1,7 @@
 const ResNewData = require('../Model/newschema');
 const upload = require('../config/multerConfig');
+const fs = require('fs');
+const path = require('path');
 const moment = require('moment-timezone');
 const { v4: uuidv4 } = require('uuid');
 
@@ -19,10 +21,6 @@ const generateUniqueApplicationID = async () => {
 
 // Add new data
 exports.addData = [
-    upload.fields([
-        { name: 'MeterImage', maxCount: 1 }, // Allow only one meter image
-        { name: 'TimerPanelImage', maxCount: 1 } // Allow only one timer panel image
-    ]),
     async (req, res) => {
         try {
             const {
@@ -36,6 +34,8 @@ exports.addData = [
                 MeterLongitude,
                 SanctionLoad,
                 TimerPanel,
+                MeterImage, // Base64 string
+                TimerPanelImage // Base64 string
             } = req.body;
 
             // Check if the ConsumerID already exists
@@ -56,15 +56,43 @@ exports.addData = [
                 Purpose,
                 Type,
                 Address,
-                MeterImageData: req.files['MeterImage'] ? req.files['MeterImage'][0].filename : null, // Single image path
                 MeterLatitude,
                 MeterLongitude,
                 SanctionLoad,
                 TimerPanel,
-                TimerPanelImage: req.files['TimerPanelImage'] ? req.files['TimerPanelImage'][0].filename : null, // Single image path
                 Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
                 Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
             });
+
+            // Set the uploads directory path
+            const uploadsDir = path.join(__dirname, '../uploads');
+
+            // Create uploads directory if it doesn't exist
+            if (!fs.existsSync(uploadsDir)) {
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+
+            // Function to save base64 images
+            const saveBase64Image = (base64String, imageName) => {
+                // Remove the data URL prefix if present
+                const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+                const imageBuffer = Buffer.from(base64Data, 'base64');
+                const imagePath = path.join(uploadsDir, imageName);
+                
+                fs.writeFileSync(imagePath, imageBuffer);
+                return imageName; // Return the saved image name
+            };
+
+            // Save images if provided
+            if (MeterImage) {
+                const meterImageName = `${uuidv4()}.png`; // Unique filename
+                newData.MeterImageData = saveBase64Image(MeterImage, meterImageName); // Store filename
+            }
+
+            if (TimerPanelImage) {
+                const timerPanelImageName = `${uuidv4()}.png`; // Unique filename
+                newData.TimerPanelImage = saveBase64Image(TimerPanelImage, timerPanelImageName); // Store filename
+            }
 
             // Save the new data to the database
             const savedData = await newData.save();
@@ -77,6 +105,7 @@ exports.addData = [
         }
     }
 ];
+
 
 // Get all data
 exports.getData = async (req, res) => {
@@ -106,8 +135,8 @@ exports.deleteData = async (req, res) => {
 
 // Add new response to the Response array
 exports.addResponse = [
-    upload.single('PoleImage'), // For a single image upload for PoleImageData
     async (req, res) => {
+        console.log(req.data);
         try {
             const { ConsumerID } = req.params;
             const {
@@ -121,7 +150,8 @@ exports.addResponse = [
                 Watts,
                 PoleLatitude,
                 PoleLongitude,
-                TypesofCable // Assuming this is an array
+                TypesofCable, // Assuming this is an array
+                PoleImage // Assuming this is the base64 string for the image
             } = req.body;
 
             // Construct new response data
@@ -139,13 +169,34 @@ exports.addResponse = [
                     Watts,
                 },
                 NumberLight,
-                PoleImageData: req.file ? req.file.filename : null, // Handle single image upload
+                PoleImageData: null, // Initialize as null
                 PoleLatitude,
                 PoleLongitude,
                 TypesofCable, // This assumes that TypesofCable is an array with the proper structure
                 Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
                 Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
             };
+
+            // Set the uploads directory path
+            const uploadsDir = path.join(__dirname, '../uploads');
+
+            // Create uploads directory if it doesn't exist
+            if (!fs.existsSync(uploadsDir)) {
+                fs.mkdirSync(uploadsDir, { recursive: true });
+            }
+
+            // Save the PoleImage if provided
+            if (PoleImage) {
+                // Remove the data URL prefix if present
+                const base64Data = PoleImage.replace(/^data:image\/\w+;base64,/, '');
+                const imageBuffer = Buffer.from(base64Data, 'base64');
+                const imageName = `${uuidv4()}.png`; // Unique filename
+                const imagePath = path.join(uploadsDir, imageName);
+
+                // Save the image to the uploads folder
+                fs.writeFileSync(imagePath, imageBuffer);
+                newResponseData.PoleImageData = imageName; // Store the filename in the newResponseData
+            }
 
             // Find the document by ConsumerID and add new response data to the Response array
             const updatedData = await ResNewData.findOneAndUpdate(
