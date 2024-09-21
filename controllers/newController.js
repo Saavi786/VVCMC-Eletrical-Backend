@@ -78,7 +78,7 @@ exports.addData = [
                 const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
                 const imageBuffer = Buffer.from(base64Data, 'base64');
                 const imagePath = path.join(uploadsDir, imageName);
-                
+
                 fs.writeFileSync(imagePath, imageBuffer);
                 return imageName; // Return the saved image name
             };
@@ -136,7 +136,6 @@ exports.deleteData = async (req, res) => {
 // Add new response to the Response array
 exports.addResponse = [
     async (req, res) => {
-        console.log(req.data);
         try {
             const { ConsumerID } = req.params;
             const {
@@ -150,8 +149,10 @@ exports.addResponse = [
                 Watts,
                 PoleLatitude,
                 PoleLongitude,
-                TypesofCable, // Assuming this is an array
-                PoleImage // Assuming this is the base64 string for the image
+                CableType,
+                SubTypeName,
+                CableWatts,
+                PoleImage 
             } = req.body;
 
             // Construct new response data
@@ -172,7 +173,11 @@ exports.addResponse = [
                 PoleImageData: null, // Initialize as null
                 PoleLatitude,
                 PoleLongitude,
-                TypesofCable, // This assumes that TypesofCable is an array with the proper structure
+                TypesofCable: {
+                    CableType,
+                    SubTypeName,
+                    CableWatts
+                }, // This assumes that TypesofCable is an array with the proper structure
                 Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
                 Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
             };
