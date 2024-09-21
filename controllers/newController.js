@@ -28,7 +28,10 @@ exports.addData = async (req, res) => {
             Address,
             MeterImageData,
             MeterLatitude,
-            MeterLongitude
+            MeterLongitude,
+            SanctionLoad,
+            TimerPanel,
+            TimerPanelImage,
         } = req.body;
 
         // Check if the ConsumerID already exists
@@ -52,6 +55,9 @@ exports.addData = async (req, res) => {
             MeterImageData,
             MeterLatitude,
             MeterLongitude,
+            SanctionLoad,
+            TimerPanel,
+            TimerPanelImage,
             Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
             Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
         });
@@ -108,9 +114,11 @@ exports.addResponse = async (req, res) => {
             Watts,
             PoleImageData,
             PoleLatitude,
-            PoleLongitude
+            PoleLongitude,
+            TypesofCable // New field for Types of Cable
         } = req.body;
 
+        // Construct new response data with TypesofCable
         const newResponseData = {
             WardCommittee,
             ConsumerID,
@@ -128,6 +136,7 @@ exports.addResponse = async (req, res) => {
             PoleImageData,
             PoleLatitude,
             PoleLongitude,
+            TypesofCable, // This assumes that TypesofCable is an array with the proper structure
             Date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD"),
             Time: moment().tz("Asia/Kolkata").format("HH:mm:ss"),
         };

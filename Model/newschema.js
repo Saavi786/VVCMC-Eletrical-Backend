@@ -34,38 +34,47 @@ const ResNewSchema = new mongoose.Schema({
     MeterLongitude: {
         type: String
     },
+    SanctionLoad:{
+        type:String
+    },
+    TimerPanel:{
+        type:String
+    },
+    TimerPanelImage:{
+        type:String
+    },
     Response: [
         {
             WardCommittee: {
-                type: String,
+                type: String
             },
             ConsumerID: {
-                type: Number,
+                type: Number
             },
             TypeofPole: {
                 PoleName: {
-                    type: String,
+                    type: String
                 },
                 HightofPole: {
-                    type: String,
+                    type: String
                 },
                 TypeofBracket: {
-                    type: String,
+                    type: String
                 },
                 Bracket: {
-                    type: String,
-                },
+                    type: String
+                }
             },
             TypeofLight: {
                 LightName: {
-                    type: String,
+                    type: String
                 },
                 Watts: {
-                    type: String,
+                    type: String
                 }
             },
             NumberLight: {
-                type: Number,
+                type: Number
             },
             PoleImageData: {
                 type: String
@@ -81,6 +90,18 @@ const ResNewSchema = new mongoose.Schema({
             },
             Time: {
                 type: String
+            },
+            // New field for Types of Cable with subtypes and watts
+            TypesofCable: {
+                CableType: {
+                    type: String // e.g., "Type A"
+                },
+                SubTypeName: {
+                    type: String // e.g., "SubType 1"
+                },
+                CableWatts: {
+                    type: String // e.g., "100W"
+                }
             }
         }
     ],
