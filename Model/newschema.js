@@ -3,15 +3,15 @@ const mongoose = require("mongoose");
 const ResNewSchema = new mongoose.Schema({
     ApplicationID:{
         type: String,
-        unique:true
+        // unique:true
     },
     WardCommittee: {
-        required:true,
+        // required:true,
         type: String
     },
     ConsumerID: {
         type: Number,
-        unique: true
+        // unique: true
     },
     NewMeterNumber: {
         type: String
