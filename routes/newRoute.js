@@ -29,4 +29,7 @@ router.get('/data/today', resNewDataController.getDataForToday);
 // Route to get data for month and year wise
 router.get('/data/year-month', resNewDataController.getDataForMonthAndYear);
 
+// Update route to use ConsumerID
+router.put('/update-consumer/:consumerId', resNewDataController.updateResNewData);
+
 module.exports = router;

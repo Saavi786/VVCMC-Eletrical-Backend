@@ -325,3 +325,89 @@ exports.getDataForMonthAndYear = async (req, res) => {
         res.status(500).json({ error: "Error fetching data: " + error.message });
     }
 };
+
+exports.updateResNewData = async (req, res) => {
+    const { consumerId } = req.params; // Get ConsumerID from params
+    const updateData = req.body;
+
+    try {
+        // Find the existing document using ConsumerID
+        const existingDocument = await ResNewData.findOne({ ConsumerID: consumerId });
+        if (!existingDocument) {
+            return res.status(404).json({ message: 'Document not found' });
+        }
+
+        // Handle Base64 image uploads if included
+        const saveImage = async (base64String, fileName) => {
+            const matches = base64String.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+            if (!matches) return null;
+
+            const extension = matches[1]; // Get the image extension
+            const buffer = Buffer.from(matches[2], 'base64'); // Convert Base64 to buffer
+            const filePath = path.join(__dirname, '../uploads', `${fileName}.${extension}`); // Create file path
+
+            // Write the buffer to a file
+            await fs.promises.writeFile(filePath, buffer);
+            return `${fileName}.${extension}`; // Return the saved file name
+        };
+
+        // Only update MeterImageData if provided
+        if (updateData.MeterImageData) {
+            // Delete the old image if it exists
+            if (existingDocument.MeterImageData) {
+                const oldMeterImagePath = path.join(__dirname, '../uploads', existingDocument.MeterImageData);
+                fs.unlink(oldMeterImagePath, (err) => {
+                    if (err) console.error(`Failed to delete old meter image: ${err}`);
+                });
+            }
+            updateData.MeterImageData = await saveImage(updateData.MeterImageData, `meterImage_${consumerId}`);
+        } else {
+            // If not provided, keep the existing MeterImageData
+            updateData.MeterImageData = existingDocument.MeterImageData;
+        }
+
+        // Only update TimerPanelImage if provided
+        if (updateData.TimerPanelImage) {
+            // Delete the old image if it exists
+            if (existingDocument.TimerPanelImage) {
+                const oldTimerPanelImagePath = path.join(__dirname, '../uploads', existingDocument.TimerPanelImage);
+                fs.unlink(oldTimerPanelImagePath, (err) => {
+                    if (err) console.error(`Failed to delete old timer panel image: ${err}`);
+                });
+            }
+            updateData.TimerPanelImage = await saveImage(updateData.TimerPanelImage, `timerPanelImage_${consumerId}`);
+        } else {
+            // If not provided, keep the existing TimerPanelImage
+            updateData.TimerPanelImage = existingDocument.TimerPanelImage;
+        }
+
+        // Update PoleImageData for all responses
+        if (updateData.Response) {
+            for (let i = 0; i < updateData.Response.length; i++) {
+                const newPoleImageData = updateData.Response[i].PoleImageData;
+
+                if (newPoleImageData) {
+                    // Delete the old image if it exists
+                    if (existingDocument.Response[i]?.PoleImageData) {
+                        const oldPoleImagePath = path.join(__dirname, '../uploads', existingDocument.Response[i].PoleImageData);
+                        fs.unlink(oldPoleImagePath, (err) => {
+                            if (err) console.error(`Failed to delete old pole image: ${err}`);
+                        });
+                    }
+                    updateData.Response[i].PoleImageData = await saveImage(newPoleImageData, `poleImage_${consumerId}_${i}`);
+                } else {
+                    // If not provided, keep the existing PoleImageData
+                    updateData.Response[i].PoleImageData = existingDocument.Response[i]?.PoleImageData;
+                }
+            }
+        }
+
+        // Update the document with new data using ConsumerID
+        const updatedDocument = await ResNewData.findOneAndUpdate({ ConsumerID: consumerId }, updateData, { new: true, runValidators: true });
+
+        res.status(200).json(updatedDocument);
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ message: 'Error updating document', error: error.message });
+    }
+};
